@@ -4,12 +4,14 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-#define QNT_ONIBUS_NORMAL 1
-#define QNT_ONIBUS_ARTICULADO 0
-#define CAP_ONIBUS_NORMAL 1
-#define CAP_ONIBUS_ARTICULADO 2
-#define QNT_PASSAGEIROS 2
+#define QNT_ONIBUS_NORMAL 5
+#define QNT_ONIBUS_ARTICULADO 2
+#define CAP_ONIBUS_NORMAL 2
+#define CAP_ONIBUS_ARTICULADO 3
+#define QNT_PASSAGEIROS 20
 #define QNT_BOXES 2
+#define DURACAO_NORMAL 2
+#define DURACAO_ARTICULADO 4
 
 int boxes[QNT_BOXES];   // array que indica o id do onibus parado no box
 int cap_box[QNT_BOXES]; // capacidade do onibus parado no box
@@ -31,8 +33,9 @@ void viagem(int id, int box) {
     pthread_mutex_unlock(&l2);
     sem_post(&vaga);    // sinaliza que tem uma vaga livre nos boxes
 
-    printf("O onibus %d saiu do box %d e foi embora.\n", id, box);
-    sleep(5);
+    printf("O onibus %d saiu do box %d e foi fazer a viagem.\n", id, box);
+    if(id >= QNT_ONIBUS_NORMAL) sleep(DURACAO_NORMAL);
+    else sleep(DURACAO_ARTICULADO);
     printf("O onibus %d voltou da viagem.\n", id);
 
     /* entra na barreira e libera todos os passageiros
@@ -53,8 +56,8 @@ int aloca_onibus(int id, int tipo) {
     pthread_mutex_unlock(&l2);
     
     sleep(1);
-    if(tipo) printf("O onibus articulado %d conseguiu pegar o box %d.\n", id, i);
-    else printf("O onibus %d conseguiu pegar o box %d.\n", id, i);
+    if(tipo) printf("O onibus articulado %d estacionou no box %d.\n", id, i);
+    else printf("O onibus %d estacionou no box %d.\n", id, i);
 
     pthread_mutex_lock(&l3);
     if(tipo) {  // tipo 0 = normal e tipo 1 = articulado
@@ -77,6 +80,7 @@ void * f_onibus(void * x) {
         if(articulado_pend > 0) {
             sem_post(&vaga);    // se tem algum onibus articulado querendo vaga, libera a vaga
             pthread_mutex_unlock(&l1);
+            //printf("O onibus %d iria entrar no box, mas deixou de entrar pois tem um articulado querendo.\n", id);
             continue;
         }
         pthread_mutex_unlock(&l1);
@@ -92,7 +96,13 @@ void * f_articulado(void * x) {
     int id = *((int *) x);
     while(1) {
         // procedimento para conseguir vaga
+        pthread_mutex_lock(&l1);
+        articulado_pend++;
+        pthread_mutex_unlock(&l1);
         sem_wait(&vaga);
+        pthread_mutex_lock(&l1);
+        articulado_pend--;
+        pthread_mutex_unlock(&l1);
         int box = aloca_onibus(id, 1);
         sem_wait(&espera_box[box]); // aguarda todos passageiros embarcarem
         viagem(id, box);
