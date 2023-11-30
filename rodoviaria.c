@@ -58,7 +58,7 @@ int aloca_onibus(int id, int tipo) {
     sleep(1);
     if(tipo) printf("O onibus articulado %d estacionou no box %d.\n", id, i);
     else printf("O onibus %d estacionou no box %d.\n", id, i);
-
+    
     pthread_mutex_lock(&l3);
     if(tipo) {  // tipo 0 = normal e tipo 1 = articulado
         cap_box[i] = CAP_ONIBUS_ARTICULADO;
@@ -99,10 +99,13 @@ void * f_articulado(void * x) {
         pthread_mutex_lock(&l1);
         articulado_pend++;
         pthread_mutex_unlock(&l1);
+
         sem_wait(&vaga);
+
         pthread_mutex_lock(&l1);
         articulado_pend--;
         pthread_mutex_unlock(&l1);
+
         int box = aloca_onibus(id, 1);
         sem_wait(&espera_box[box]); // aguarda todos passageiros embarcarem
         viagem(id, box);
