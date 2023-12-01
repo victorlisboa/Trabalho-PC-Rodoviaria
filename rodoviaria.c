@@ -28,6 +28,7 @@ sem_t espera_box[QNT_BOXES];    // semaforo para onibus esperarem ate encher
 pthread_barrier_t barreira_onibus[QNT_ONIBUS_NORMAL+QNT_ONIBUS_ARTICULADO];
 
 void viagem(int id, int box) {
+    // Procedimentos para liberar box da rodoviaria
     pthread_mutex_lock(&l2);
     boxes[box] = -1;
     pthread_mutex_unlock(&l2);
@@ -95,13 +96,14 @@ void * f_onibus(void * x) {
 void * f_articulado(void * x) {
     int id = *((int *) x);
     while(1) {
-        // procedimento para conseguir vaga
+        // procedimento para conseguir vaga prioritaria
         pthread_mutex_lock(&l1);
         articulado_pend++;
         pthread_mutex_unlock(&l1);
 
-        sem_wait(&vaga);
+        sem_wait(&vaga);    // aguarda vaga em algum box
 
+        // indica que nao precisa mais de vaga
         pthread_mutex_lock(&l1);
         articulado_pend--;
         pthread_mutex_unlock(&l1);
